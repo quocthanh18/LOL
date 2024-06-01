@@ -606,7 +606,7 @@ Confusion matrix:
 ```{r echo=FALSE}
 conf
 ```
-```{r}
+```{r include=FALSE}
 accuracy <- accuracy(result, truth=blueWins, estimate=.pred_class) %>% 
   pull(.estimate)
 ```
