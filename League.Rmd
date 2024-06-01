@@ -452,6 +452,7 @@ So if possible, you should help your jungler in any way you can. It can be as si
 ## Turrets
 
 Turret takedowns are crucial in League of Legends because it allows players to roam freely, control vision, setup team fights. 
+
 ```{r echo=FALSE}
 blue_turrets_count <- global %>% 
   group_by(blueTowersDestroyed) %>% 
@@ -516,6 +517,7 @@ Experience or XP is game mechanic that allows champions to level up after reachi
 In League of Legends, there is a term called "denying minions". Basically, it means that you are trying to prevent the enemy from getting near the minions to gain experience. Since this data is about Diamond elo, a little lead can make a huge impact. For example, reaching level 2 or 6 can mean a kill or at least a summoner spell for these players.
 
 Let's see how having more experience can affect the game.
+
 ```{r echo=FALSE}
 blue_experience_wins <- global %>% 
   filter(blueExperienceDiff > redExperienceDiff) %>% 
