@@ -41,6 +41,8 @@ There are 19 features per team (38 in total) collected after 10min in-game. This
 ```{r include=FALSE}
 library(tidyverse)
 library(scales)
+library(tidymodels)
+library(glmnet)
 ```
 
 ```{r include=FALSE}
@@ -71,7 +73,7 @@ global$Winner <- ifelse(global$blueWins == 0, "Red", "Blue")
 
 ## The distribution between Red and Blue wins
 
-```{r echo=FALSE}
+```{r include=FALSE}
 ggplot(global, aes(x=Winner, fill=Winner)) + geom_bar() +
   scale_fill_manual(values=c("Blue" = "#61E8E1", "Red" = "#F25757")) +
   geom_text(stat='count', aes(label=percent(round(..count.. /sum(..count..), 1))), position = position_stack(vjust = 0.5)) 
@@ -150,7 +152,7 @@ ggplot(win_distribution, aes(x=Team, y=Count, fill=Result)) + geom_bar(stat="ide
 
 Let's see the wards placed by each team
 
-```{r}
+```{r include=FALSE}
 blue_wards_placed <- global %>% 
   select(blueWardsPlaced) %>%
   mutate(Team = "Blue")
@@ -159,7 +161,7 @@ ggplot(blue_wards_placed, aes(x=blueWardsPlaced)) + geom_histogram(binwidth = 30
   labs(title = "Wards Placed by Blue Team")
 ```
 
-```{r}
+```{r include=FALSE}
 red_wards_placed <- global %>% 
   select(redWardsPlaced) %>%
   mutate(Team = "Red")
@@ -195,7 +197,7 @@ Red's team winrate when placing more wards: `r nrow(red_wards_winner) / nrow(red
 
 Let's see the wards destroyed by each team
 
-```{r}
+```{r echo=FALSE}
 blue_wards_destroyed <- global %>% 
   select(blueWardsDestroyed) %>%
   mutate(Team = "Blue")
@@ -204,7 +206,7 @@ ggplot(blue_wards_destroyed, aes(x=blueWardsDestroyed)) + geom_histogram(binwidt
   labs(title = "Wards Destroyed by Blue Team")
 ```
 
-```{r}
+```{r echo=FALSE}
 red_wards_destroyed <- global %>% 
   select(redWardsDestroyed) %>%
   mutate(Team = "Red")
@@ -215,18 +217,22 @@ ggplot(red_wards_destroyed, aes(x=redWardsDestroyed)) + geom_histogram(binwidth 
 
 Now, let's see if destroying a proportion of the enemy's wards can help a team win the game. Let's say 25%.
 
-```{r}
+```{r include=FALSE}
 blue_wards_diff <- global %>% 
   filter(blueWardsDestroyed >= 25 * redWardsPlaced / 100) %>% 
   select(Winner)
 blue_wards_diff_winrate <- nrow(blue_wards_diff %>% filter(Winner == "Blue")) / nrow(blue_wards_diff) * 100
+
+global$blueGoodVision <- ifelse(global$blueWardsDestroyed >= 25 * global$redWardsPlaced / 100, 1, 0)
 ```
 
-```{r}
+```{r include=FALSE}
 red_wards_diff <- global %>% 
   filter(redWardsDestroyed >= 25 * blueWardsPlaced / 100) %>% 
   select(Winner)
 red_wards_diff_winrate <- nrow(red_wards_diff %>% filter(Winner == "Red")) / nrow(red_wards_diff) * 100
+
+global$redGoodVision <- ifelse(global$redWardsDestroyed >= 25 * global$blueWardsPlaced / 100, 1, 0)
 ```
 
 Blue's team winrate when destroying 25% of the enemy's wards: `r blue_wards_diff_winrate`%
@@ -237,7 +243,7 @@ Red's team winrate when destroying 25% of the enemy's wards: `r red_wards_diff_w
 
 Let's see if having more minions killed can help a team win the game.
 
-```{r}
+```{r include=FALSE}
 blue_minions <- global %>% 
   filter(blueTotalMinionsKilled > redTotalMinionsKilled) %>% 
   select(Winner)
@@ -245,7 +251,7 @@ blue_minions <- global %>%
 blue_minions_winrate <- nrow(blue_minions %>% filter(Winner == "Blue")) / nrow(blue_minions) * 100
 ```
 
-```{r}
+```{r include=FALSE}
 red_minions <- global %>% 
   filter(redTotalMinionsKilled > blueTotalMinionsKilled) %>% 
   select(Winner)
@@ -261,7 +267,7 @@ Red's team winrate when killing more minions: `r red_minions_winrate`%
 
 ![](./Map.jpg){width="50%"}
 
-```{r}
+```{r echo=FALSE}
 global$firstDragon <- ifelse(global$blueDragons == 1, "Blue", ifelse(global$redDragons == 1, "Red", "None"))
 
 dragon_pie <- global %>% 
@@ -282,7 +288,7 @@ ggplot(dragon_pie, aes(x="", y=Count, fill=firstDragon)) +
   geom_text(aes(y=ypos, label=paste0(Count, "%")), color="black", size=5) 
 ```
 
-```{r}
+```{r echo=FALSE}
 global$firstHerald <- ifelse(global$blueHeralds == 1, "Blue", ifelse(global$redHeralds == 1, "Red", "None"))
 
 herald_pie <- global %>% 
@@ -318,7 +324,7 @@ Based on the map and two pie charts above, we can see why there is a huge differ
 
 Let's see how many games the team that secures the first dragon/herald wins.
 
-```{r}
+```{r echo=FALSE}
 blue_dragon <- global %>% 
   filter(blueDragons == 1) %>% 
   select(Winner)
@@ -345,7 +351,7 @@ ggplot(dragon_summary, aes(x=Team, y=Count, fill=Result)) + geom_bar(stat="ident
   labs(title = "First Dragon Impact on Games") 
 ```
 
-```{r}
+```{r echo=FALSE}
 blue_herald <- global %>% 
   filter(blueHeralds == 1) %>% 
   select(Winner)
@@ -374,7 +380,7 @@ ggplot(herald_summary, aes(x=Team, y=Count, fill=Result)) + geom_bar(stat="ident
 
 What about the winrate when securing both the first dragon and herald ?
 
-```{r}
+```{r include=FALSE}
 blue_objectives <- global %>% 
   filter(blueDragons == 1 & blueHeralds == 1) %>% 
   select(Winner)
@@ -397,7 +403,7 @@ KDA is a metric that measures the performance of a player in a game. It is calcu
 
 Let's create new columns "KDA" for both teams.
 
-```{r}
+```{r include=FALSE}
 global$blueKDA <- (global$blueKills + global$blueAssists) / ifelse(global$blueDeaths == 0, 1, global$blueDeaths)
 global$redKDA <- (global$redKills + global$redAssists) / ifelse(global$redDeaths == 0, 1, global$redDeaths)
 
@@ -421,7 +427,7 @@ As a seasoned player, I would say that the jungle role is the most important rol
 
 To determine the impact of the jungle role, we will look at the total jungle monsters killed by each team and the number of elite monsters killed by each team. I would say that a better jungler would have a higher number of jungle monsters killed and elite monsters killed.
 
-```{r}
+```{r include=FALSE}
 blue_jungle <- global %>% 
   filter((blueTotalJungleMinionsKilled > redTotalJungleMinionsKilled) 
          & (blueEliteMonsters > redEliteMonsters)) %>% 
@@ -446,7 +452,7 @@ So if possible, you should help your jungler in any way you can. It can be as si
 ## Turrets
 
 Turret takedowns are crucial in League of Legends because it allows players to roam freely, control vision, setup team fights. 
-```{r}
+```{r echo=FALSE}
 blue_turrets_count <- global %>% 
   group_by(blueTowersDestroyed) %>% 
   summarise(Count=n()) 
@@ -463,7 +469,7 @@ ggplot(red_turrets_count, aes(x=redTowersDestroyed, y=Count)) + geom_bar(stat="i
 ```
 
 We see that there are some games where the blue team destroyed 3, 4 turrets while red team couldn't. This could be due to the fact that the blue team had access to the Herald. 
-```{r}
+```{r include=FALSE}
 blue_turrets_diff <- global %>% 
   filter(blueTowersDestroyed >= 3)
 
@@ -473,7 +479,7 @@ blue_turrets_diff_winrate <- nrow(blue_turrets_diff %>% filter(blueHeralds == 1)
 In `r nrow(blue_turrets_diff)` games where the blue team destroyed 3 or more turrets, there are `r blue_turrets_diff_winrate` games where the blue team secured the Herald. 
 
 Let's consider the winrate for both team regarding destroying 0, 1 or 2 turrets.
-```{r}
+```{r include=FALSE}
 blue_0_turrets_winrate <- nrow(global %>% filter(Winner == "Blue" & blueTowersDestroyed == 0)) / nrow(global %>% filter(blueTowersDestroyed == 0)) * 100
 
 blue_1_turrets_winrate <- nrow(global %>% filter(Winner == "Blue" & blueTowersDestroyed == 1)) / nrow(global %>% filter(blueTowersDestroyed == 1)) * 100
@@ -487,7 +493,7 @@ red_1_turrets_winrate <- nrow(global %>% filter(Winner == "Red" & redTowersDestr
 red_2_turrets_winrate <- nrow(global %>% filter(Winner == "Red" & redTowersDestroyed == 2)) / nrow(global %>% filter(redTowersDestroyed == 2)) * 100
 ```
 
-```{r}
+```{r include=FALSE}
 turrets_winrate <- data.frame(
   Team = c("Blue", "Red"),
   turrets_0 = c(blue_0_turrets_winrate, red_0_turrets_winrate),
@@ -496,7 +502,7 @@ turrets_winrate <- data.frame(
 )
 ```
 
-```{r}
+```{r echo=FALSE}
 library(knitr)
 kable(turrets_winrate)
 ```
@@ -510,7 +516,7 @@ Experience or XP is game mechanic that allows champions to level up after reachi
 In League of Legends, there is a term called "denying minions". Basically, it means that you are trying to prevent the enemy from getting near the minions to gain experience. Since this data is about Diamond elo, a little lead can make a huge impact. For example, reaching level 2 or 6 can mean a kill or at least a summoner spell for these players.
 
 Let's see how having more experience can affect the game.
-```{r}
+```{r echo=FALSE}
 blue_experience_wins <- global %>% 
   filter(blueExperienceDiff > redExperienceDiff) %>% 
   select(Winner) %>% 
@@ -544,3 +550,65 @@ ggplot(exp_summary, aes(x=Team, y=Count, fill=Result)) + geom_bar(stat="identity
 
 ## Logistic Regression
 
+### Variables selection
+Based on the analysis above, these are the variables that will be dropped:
+
+- gameId
+- Winner
+- blue/redAvgLevel
+- blue/redExperienceDiff
+- blue/redCSPerMin
+- blue/redGoldPerMin
+- firstDragon
+- firstHerald
+```{r include=FALSE}
+global <- global %>% 
+  select(-c(gameId, Winner, blueAvgLevel, redAvgLevel, blueExperienceDiff, redExperienceDiff, blueCSPerMin, redCSPerMin, blueGoldPerMin, redGoldPerMin, firstDragon, firstHerald))
+
+global$blueWins <- as.factor(global$blueWins)
+```
+
+### Splitting the data
+
+We are using 80% of the data for training and 20% for testing.
+```{r}
+set.seed(420)
+split <- initial_split(global, prop = 0.8, strata = blueWins)
+train <- split %>% 
+         training()
+test <- split %>% 
+        testing()
+```
+
+### Training the model
+```{r}
+model <- logistic_reg(mixture=0, penalty=double(1)) %>% 
+  set_engine("glmnet") %>% 
+  set_mode("classification") %>% 
+  fit(blueWins ~ ., data=train)
+```
+
+### Making predictions
+```{r}
+predictions <- predict(model, test, type="class") 
+```
+
+### Evaluating the model
+```{r include=FALSE}
+test$blueWins <- as.factor(test$blueWins)
+result <- test %>% 
+  bind_cols(predictions) %>% 
+  select(blueWins, .pred_class)
+
+conf <- conf_mat(result, truth=blueWins, estimate=.pred_class)
+```
+Confusion matrix:
+```{r echo=FALSE}
+conf
+```
+```{r}
+accuracy <- accuracy(result, truth=blueWins, estimate=.pred_class) %>% 
+  pull(.estimate)
+```
+
+The accuracy of the model is `r round(accuracy * 100, 2)`%
